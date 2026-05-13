@@ -2,9 +2,7 @@
 
 Paste or drop a flyer or screenshot. This tiny web app highlights **QR codes, barcodes, URLs, emails, phones**, and simple **street-style addresses** so you can copy or open them—plus the **full OCR text** in one place.
 
-**Listing screenshot:** add `docs/preview.png`, then put this line under the intro (Tiny Tool Town often uses the README image):
-
-`![App preview](./docs/preview.png)`
+![App preview](./docs/preview.png)
 
 ## Why it exists
 
