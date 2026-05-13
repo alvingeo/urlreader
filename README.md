@@ -4,6 +4,8 @@ Paste or drop a flyer or screenshot. This tiny web app highlights **QR codes, ba
 
 ![App preview](./docs/preview.png)
 
+**Live demo:** [https://black-moss-09ab0f610.7.azurestaticapps.net](https://black-moss-09ab0f610.7.azurestaticapps.net) (Azure Static Web Apps)
+
 ## Why it exists
 
 Phones do not always let you tap text inside an image. This runs **entirely in your browser** (no upload server) and uses ZXing for codes and Tesseract.js for text layout.
