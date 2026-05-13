@@ -1,11 +1,7 @@
 import { BrowserMultiFormatReader } from '@zxing/browser'
 import { DecodeHintType } from '@zxing/library'
 import type { Result } from '@zxing/library'
-import {
-  highlightFromBarcodeInCrop,
-  highlightFromBarcodeResult,
-  type Highlight,
-} from './detect'
+import { highlightFromBarcodeInCrop, type Highlight } from './detect'
 
 const hints = new Map<DecodeHintType, unknown>()
 hints.set(DecodeHintType.TRY_HARDER, true)
@@ -87,19 +83,42 @@ async function tryDecodeCanvas(canvas: HTMLCanvasElement): Promise<Result | null
   }
 }
 
+/** Same QR often decodes from overlapping crops — keep one per payload string. */
+function dedupeBarcodes(list: Highlight[]): Highlight[] {
+  const out: Highlight[] = []
+  for (const h of list) {
+    const text = h.text.trim()
+    if (!text) continue
+    if (out.some((o) => o.text.trim() === text)) continue
+    out.push(h)
+  }
+  return out
+}
+
+function pushResult(
+  bucket: Highlight[],
+  result: Result,
+  crop: { sx: number; sy: number; sw: number; sh: number },
+  cw: number,
+  ch: number,
+): void {
+  bucket.push(highlightFromBarcodeInCrop(result, crop, cw, ch))
+}
+
 /**
- * Posters often embed a small QR in a corner; a single full-frame decode misses it.
- * Try direct decode, multiple full-image scales, then upscaled bottom crops (typical flyer layout).
+ * Run every decode path (full frame, scales, bottom/side crops) and collect **all** distinct
+ * barcodes/QR codes—typical flyers have two or more codes in the lower half.
  */
-export async function scanBarcodeBestEffort(img: HTMLImageElement): Promise<Highlight | null> {
+export async function scanAllBarcodesBestEffort(img: HTMLImageElement): Promise<Highlight[]> {
   const nw = img.naturalWidth
   const nh = img.naturalHeight
+  const raw: Highlight[] = []
 
   try {
     const r = await reader.decodeFromImageElement(img)
-    return highlightFromBarcodeResult(r)
+    pushResult(raw, r, { sx: 0, sy: 0, sw: nw, sh: nh }, nw, nh)
   } catch {
-    /* try harder paths */
+    /* continue */
   }
 
   const maxEdges = [2048, 1600, 1280, 1024, 900, 768, 640, 512]
@@ -107,28 +126,32 @@ export async function scanBarcodeBestEffort(img: HTMLImageElement): Promise<High
     const { canvas, crop, cw, ch } = drawScaledFull(img, me)
     if (cw === nw && ch === nh && me >= Math.max(nw, nh)) continue
     const r = await tryDecodeCanvas(canvas)
-    if (r) return highlightFromBarcodeInCrop(r, crop, cw, ch)
+    if (r) pushResult(raw, r, crop, cw, ch)
   }
 
   const cropDefs: { sx: number; sy: number; sw: number; sh: number }[] = [
     { sx: 0, sy: nh * 0.5, sw: nw * 0.62, sh: nh * 0.5 },
+    { sx: 0, sy: nh * 0.55, sw: nw * 0.5, sh: nh * 0.45 },
+    { sx: nw * 0.5, sy: nh * 0.55, sw: nw * 0.5, sh: nh * 0.45 },
     { sx: 0, sy: nh * 0.58, sw: nw * 0.55, sh: nh * 0.42 },
     { sx: 0, sy: nh * 0.6, sw: nw * 0.5, sh: nh * 0.4 },
     { sx: nw * 0.2, sy: nh * 0.55, sw: nw * 0.8, sh: nh * 0.45 },
     { sx: nw * 0.4, sy: nh * 0.52, sw: nw * 0.6, sh: nh * 0.48 },
+    { sx: nw * 0.25, sy: nh * 0.58, sw: nw * 0.5, sh: nh * 0.4 },
+    { sx: nw * 0.45, sy: nh * 0.58, sw: nw * 0.52, sh: nh * 0.4 },
   ]
 
-  for (const raw of cropDefs) {
-    const crop = clampCrop(nw, nh, raw)
+  for (const c of cropDefs) {
+    const crop = clampCrop(nw, nh, c)
     if (!crop) continue
     for (const minEdge of [360, 480, 640]) {
       for (const gray of [false, true]) {
         const { canvas, cw, ch } = drawCropUpscaled(img, crop, minEdge, gray)
         const r = await tryDecodeCanvas(canvas)
-        if (r) return highlightFromBarcodeInCrop(r, crop, cw, ch)
+        if (r) pushResult(raw, r, crop, cw, ch)
       }
     }
   }
 
-  return null
+  return dedupeBarcodes(raw)
 }

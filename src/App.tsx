@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createWorker } from 'tesseract.js'
-import { scanBarcodeBestEffort } from './scanBarcode'
+import { scanAllBarcodesBestEffort } from './scanBarcode'
 import {
   flattenTesseractLines,
   highlightsFromOcrLines,
@@ -113,7 +113,7 @@ export default function App() {
   )
 
   const processImage = useCallback(async (img: HTMLImageElement) => {
-    setStatus('Scanning barcode (multi-scale) and reading text…')
+    setStatus('Scanning barcodes / QR (multi-region) and reading text…')
     setError(null)
     const nw = img.naturalWidth
     const nh = img.naturalHeight
@@ -125,8 +125,8 @@ export default function App() {
 
     const found: Highlight[] = []
 
-    const barcode = await scanBarcodeBestEffort(img)
-    if (barcode) found.push(barcode)
+    const barcodes = await scanAllBarcodesBestEffort(img)
+    found.push(...barcodes)
 
     try {
       const worker = await getOcrWorker()
@@ -276,8 +276,9 @@ export default function App() {
             <ol className="explainer-list">
               <li>Your image loads only in this tab (nothing is uploaded to our server).</li>
               <li>
-                We try to read <strong>one</strong> barcode or QR code using several zoom levels
-                and bottom-of-image crops (common on flyers), then a decoder on those bitmaps.
+                We scan for <strong>all</strong> barcodes and QR codes we can find using several
+                zoom levels and bottom-of-image crops (common on flyers), then merge duplicate
+                reads from overlapping regions.
               </li>
               <li>
                 We run <strong>OCR</strong> (optical character recognition) with layout so
@@ -453,8 +454,9 @@ export default function App() {
 
       <footer className="footer muted">
         <p>
-          All processing stays in your browser. One barcode/QR per scan pass; OCR may download
-          a language pack on first use (~2–4 MB). Results are best on sharp, well-lit images.
+          All processing stays in your browser. We try every region pass to list distinct
+          barcodes/QR codes; OCR may download a language pack on first use (~2–4 MB). Best results
+          on sharp images.
           Styling is inspired by{' '}
           <a href="https://www.tinytooltown.com/" target="_blank" rel="noopener noreferrer">
             Tiny Tool Town
