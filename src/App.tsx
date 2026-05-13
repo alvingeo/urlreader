@@ -1,18 +1,15 @@
 import type { CSSProperties } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { BrowserMultiFormatReader } from '@zxing/browser'
 import { createWorker } from 'tesseract.js'
+import { scanBarcodeBestEffort } from './scanBarcode'
 import {
   flattenTesseractLines,
-  highlightFromBarcodeResult,
   highlightsFromOcrLines,
   normalizeUrlForOpen,
   type Highlight,
   type HighlightKind,
 } from './detect'
 import './App.css'
-
-const reader = new BrowserMultiFormatReader()
 
 const KIND_LABEL: Record<HighlightKind, string> = {
   url: 'Link',
@@ -116,7 +113,7 @@ export default function App() {
   )
 
   const processImage = useCallback(async (img: HTMLImageElement) => {
-    setStatus('Scanning barcode and reading text…')
+    setStatus('Scanning barcode (multi-scale) and reading text…')
     setError(null)
     const nw = img.naturalWidth
     const nh = img.naturalHeight
@@ -128,12 +125,8 @@ export default function App() {
 
     const found: Highlight[] = []
 
-    try {
-      const result = await reader.decodeFromImageElement(img)
-      found.push(highlightFromBarcodeResult(result))
-    } catch {
-      /* no barcode in image */
-    }
+    const barcode = await scanBarcodeBestEffort(img)
+    if (barcode) found.push(barcode)
 
     try {
       const worker = await getOcrWorker()
@@ -283,8 +276,8 @@ export default function App() {
             <ol className="explainer-list">
               <li>Your image loads only in this tab (nothing is uploaded to our server).</li>
               <li>
-                We try to read <strong>one</strong> barcode or QR code from the picture using
-                a decoder that looks for patterns of light and dark modules.
+                We try to read <strong>one</strong> barcode or QR code using several zoom levels
+                and bottom-of-image crops (common on flyers), then a decoder on those bitmaps.
               </li>
               <li>
                 We run <strong>OCR</strong> (optical character recognition) with layout so

@@ -151,7 +151,7 @@ export function highlightFromBarcodeResult(result: Result): Highlight {
   if (pts.length >= 2) {
     const xs = pts.map((p) => p.getX())
     const ys = pts.map((p) => p.getY())
-    const pad = 4
+    const pad = 6
     bbox = {
       x0: Math.min(...xs) - pad,
       y0: Math.min(...ys) - pad,
@@ -160,6 +160,38 @@ export function highlightFromBarcodeResult(result: Result): Highlight {
     }
   } else {
     bbox = { x0: 0, y0: 0, x1: 0, y1: 0 }
+  }
+  return {
+    id: newId(),
+    kind: 'barcode',
+    text: result.getText(),
+    bbox,
+  }
+}
+
+/** Decoder ran on a canvas `canvasW`×`canvasH` that shows `crop` of the source image; map points to full image. */
+export function highlightFromBarcodeInCrop(
+  result: Result,
+  crop: { sx: number; sy: number; sw: number; sh: number },
+  canvasW: number,
+  canvasH: number,
+): Highlight {
+  const pts = result.getResultPoints()
+  const pad = 6
+  const mapX = (px: number) => crop.sx + (px / canvasW) * crop.sw
+  const mapY = (py: number) => crop.sy + (py / canvasH) * crop.sh
+  let bbox: Bbox
+  if (pts.length >= 2) {
+    const xs = pts.map((p) => mapX(p.getX()))
+    const ys = pts.map((p) => mapY(p.getY()))
+    bbox = {
+      x0: Math.min(...xs) - pad,
+      y0: Math.min(...ys) - pad,
+      x1: Math.max(...xs) + pad,
+      y1: Math.max(...ys) + pad,
+    }
+  } else {
+    bbox = { x0: crop.sx, y0: crop.sy, x1: crop.sx + crop.sw, y1: crop.sy + crop.sh }
   }
   return {
     id: newId(),
