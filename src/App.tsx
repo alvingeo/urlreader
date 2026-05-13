@@ -65,6 +65,22 @@ async function copyText(text: string) {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window === 'undefined') return 'dark'
+    const saved = localStorage.getItem('urlreader-theme')
+    if (saved === 'light' || saved === 'dark') return saved
+    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+  })
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem('urlreader-theme', theme)
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) {
+      meta.setAttribute('content', theme === 'dark' ? '#0f0e17' : '#fffaf7')
+    }
+  }, [theme])
+
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [highlights, setHighlights] = useState<Highlight[]>([])
   const [fullText, setFullText] = useState('')
@@ -212,13 +228,99 @@ export default function App() {
   }, [revokePrevious])
 
   return (
-    <div className="app">
+    <>
+      <nav className="site-topbar" aria-label="Tiny Tool Town">
+        <div className="site-topbar__links">
+          <a
+            className="site-topbar__brand"
+            href="https://www.tinytooltown.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            🏘️ Tiny Tool Town
+          </a>
+          <a
+            href="https://www.tinytooltown.com/tools/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Browse
+          </a>
+          <a
+            href="https://www.tinytooltown.com/submit/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Submit
+          </a>
+        </div>
+        <button
+          type="button"
+          className="theme-toggle"
+          onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+      </nav>
+      <div className="app">
       <header className="header">
         <h1>Image link &amp; barcode reader</h1>
-        <p className="lede">
-          Paste, drop, or choose an image. We highlight QR codes, barcodes, links,
-          emails, phones, and common address lines so you can copy or open them.
+        <p className="intro-why">
+          Flyers, posters, and screenshots are usually just <strong>pictures</strong>. You
+          often cannot tap a URL inside a JPEG, and a small or blurry QR code may not scan
+          reliably. This tool pulls those links and codes back out as real text you can{' '}
+          <strong>copy</strong> or <strong>open</strong>.
         </p>
+        <p className="lede">
+          Paste, drop, or choose an image below. We highlight QR codes, barcodes, links,
+          emails, phones, and common address-style lines—plus the full readable text.
+        </p>
+        <details className="explainer">
+          <summary>How it works &amp; what technology this uses</summary>
+          <div className="explainer-body">
+            <h3 className="explainer-h">How it works</h3>
+            <ol className="explainer-list">
+              <li>Your image loads only in this tab (nothing is uploaded to our server).</li>
+              <li>
+                We try to read <strong>one</strong> barcode or QR code from the picture using
+                a decoder that looks for patterns of light and dark modules.
+              </li>
+              <li>
+                We run <strong>OCR</strong> (optical character recognition) with layout so
+                we know where words sit on the page, then match URLs, emails, phone-like
+                strings, and simple street-style lines.
+              </li>
+              <li>
+                Highlights are drawn from those coordinates so you can click a region to
+                open a link or copy text; the sidebar lists everything we found.
+              </li>
+            </ol>
+            <h3 className="explainer-h">Technology</h3>
+            <p className="explainer-p">
+              <strong>React</strong> and <strong>TypeScript</strong>, built with{' '}
+              <strong>Vite</strong>. Barcodes and QR codes use{' '}
+              <a
+                href="https://github.com/zxing-js/browser"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                @zxing/browser
+              </a>
+              . Text and positions come from{' '}
+              <a
+                href="https://github.com/naptha/tesseract.js"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                tesseract.js
+              </a>{' '}
+              (Tesseract OCR compiled to WebAssembly for the browser). The first OCR run may
+              download a small English model. Quality depends on resolution, focus, and
+              contrast—very fuzzy images will always be harder.
+            </p>
+          </div>
+        </details>
       </header>
 
       <section
@@ -357,9 +459,17 @@ export default function App() {
       </section>
 
       <footer className="footer muted">
-        Runs in your browser. First OCR pass may download a language model (~2–4 MB).
-        Barcode scan finds one code per image; OCR quality depends on image clarity.
+        <p>
+          All processing stays in your browser. One barcode/QR per scan pass; OCR may download
+          a language pack on first use (~2–4 MB). Results are best on sharp, well-lit images.
+          Styling is inspired by{' '}
+          <a href="https://www.tinytooltown.com/" target="_blank" rel="noopener noreferrer">
+            Tiny Tool Town
+          </a>
+          —free, fun, open-source tiny tools.
+        </p>
       </footer>
     </div>
+    </>
   )
 }
