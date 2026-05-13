@@ -66,7 +66,7 @@ export default function App() {
     if (typeof window === 'undefined') return 'dark'
     const saved = localStorage.getItem('urlreader-theme')
     if (saved === 'light' || saved === 'dark') return saved
-    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+    return 'dark'
   })
 
   useEffect(() => {

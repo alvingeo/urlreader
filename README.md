@@ -4,7 +4,7 @@ Paste or drop a flyer or screenshot. This tiny web app highlights **QR codes, ba
 
 ![App preview](./docs/preview.png)
 
-**Live demo:** [https://black-moss-09ab0f610.7.azurestaticapps.net](https://black-moss-09ab0f610.7.azurestaticapps.net) (Azure Static Web Apps)
+**Live demo:** [https://tool.smartaitower.com](https://tool.smartaitower.com)
 
 ## Why it exists
 
